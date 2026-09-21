@@ -1749,6 +1749,10 @@ internal class CrossfadeExoPlayerAdapter(
                     // ERROR_CODE_PARSING_CONTAINER_MALFORMED (3001) = server returned non-media response (e.g. HTML error page)
                     // ERROR_CODE_IO_BAD_HTTP_STATUS (2004) = HTTP 403/410 from expired URL
                     // ERROR_CODE_IO_NETWORK_CONNECTION_FAILED (2001) = connection refused
+                    // ERROR_CODE_IO_UNSPECIFIED (2000) = generic I/O failure, notably a transient
+                    //   network hiccup (Wi-Fi handoff, brief signal loss). Without retrying here the
+                    //   player latches into InternalState.ERROR permanently even though the network
+                    //   recovers a moment later — see maxrave-dev/SimpMusic#2429.
                     // ERROR_CODE_IO_FILE_NOT_FOUND (2005) = the resolver served a cache hit as a bare
                     //   media id and the cached spans were evicted (or cleared) mid-read, so
                     //   DefaultDataSource fell through to FileDataSource on a scheme-less URI. Media3
@@ -1758,6 +1762,8 @@ internal class CrossfadeExoPlayerAdapter(
                     val isRetryableSourceError =
                         error.errorCode == PlaybackException.ERROR_CODE_PARSING_CONTAINER_MALFORMED ||
                             error.errorCode == PlaybackException.ERROR_CODE_IO_BAD_HTTP_STATUS ||
+                            error.errorCode == PlaybackException.ERROR_CODE_IO_UNSPECIFIED ||
+                            error.errorCode == PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED ||
                             error.errorCode == PlaybackException.ERROR_CODE_IO_FILE_NOT_FOUND
 
                     val currentVideoId = playlist.getOrNull(localCurrentMediaItemIndex)?.mediaId
