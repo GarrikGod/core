@@ -5,6 +5,7 @@ import android.view.SurfaceHolder
 import android.view.SurfaceView
 import android.view.TextureView
 import androidx.media3.common.ForwardingPlayer
+import androidx.media3.common.FlagSet
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
@@ -439,6 +440,27 @@ internal class DelegatingForwardingPlayer(
                 listener.onMediaItemTransition(mediaItem, Player.MEDIA_ITEM_TRANSITION_REASON_AUTO)
                 listener.onMediaMetadataChanged(metadata)
                 listener.onAvailableCommandsChanged(commands)
+                // media3's DefaultMediaNotificationProvider rebuilds the system notification
+                // off Player.Listener.onEvents (a batched Player.Events flag set), not off the
+                // three individual callbacks above. Those update MediaSession's internal state
+                // but never trigger a notification repost on their own — the shade keeps
+                // showing whatever was posted before this swap (previous track's title/art)
+                // until some other, unrelated event happens to fire onEvents later. Dispatch it
+                // explicitly so the notification is rebuilt in the same frame as the swap.
+                listener.onEvents(
+                    player,
+                    Player.Events(
+                        FlagSet
+                            .Builder()
+                            .add(Player.EVENT_MEDIA_ITEM_TRANSITION)
+                            .add(Player.EVENT_MEDIA_METADATA_CHANGED)
+                            .add(Player.EVENT_TIMELINE_CHANGED)
+                            .add(Player.EVENT_IS_PLAYING_CHANGED)
+                            .add(Player.EVENT_PLAYBACK_STATE_CHANGED)
+                            .add(Player.EVENT_AVAILABLE_COMMANDS_CHANGED)
+                            .build(),
+                    ),
+                )
             } catch (e: Exception) {
                 Logger.w(TAG, "Error notifying listener about media item change: ${e.message}")
             }
